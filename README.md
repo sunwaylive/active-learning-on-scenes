@@ -1,1 +1,1 @@
-Siggraph 2015 project.
+A Siggraph 2015 project.
