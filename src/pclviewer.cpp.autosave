@@ -1,0 +1,148 @@
+#include "pclviewer.h"
+#include "../build/ui_pclviewer.h"
+#include <pcl/sample_consensus/ransac.h>
+#include <pcl/sample_consensus/sac_model_plane.h>
+#include <pcl/sample_consensus/sac_model_sphere.h>
+
+PCLViewer::PCLViewer (QWidget *parent) :
+  QMainWindow (parent),
+  ui (new Ui::PCLViewer)
+{
+  ui->setupUi (this);
+  this->setWindowTitle ("Scene Segmentation");
+
+  // Setup the cloud pointer
+  cloud.reset (new PointCloudT);
+
+  if(pcl::io::loadPCDFile<PointT>("../data/s1.pcd", *cloud) == -1){
+    PCL_ERROR("Could't read file! \n");
+    return;
+  }
+  
+  // The number of points in the cloud
+  // cloud->points.resize (200);
+
+  // // The default color
+  // red   = 128;
+  // green = 128;
+  // blue  = 128;
+
+  // // Fill the cloud with some points
+  // for (size_t i = 0; i < cloud->points.size (); ++i)
+  // {
+  //   cloud->points[i].x = 1024 * rand () / (RAND_MAX + 1.0f);
+  //   cloud->points[i].y = 1024 * rand () / (RAND_MAX + 1.0f);
+  //   cloud->points[i].z = 1024 * rand () / (RAND_MAX + 1.0f);
+
+  //   cloud->points[i].r = red;
+  //   cloud->points[i].g = green;
+  //   cloud->points[i].b = blue;
+  // }
+
+  // Set up the QVTK window
+  viewer.reset (new pcl::visualization::PCLVisualizer ("viewer", false));
+  ui->qvtkWidget->SetRenderWindow (viewer->getRenderWindow ());
+  viewer->setupInteractor (ui->qvtkWidget->GetInteractor (), ui->qvtkWidget->GetRenderWindow ());
+  ui->qvtkWidget->update ();
+
+  // Connect "random" button and the function
+  connect (ui->pushButton_random,  SIGNAL (clicked ()), this, SLOT (randomButtonPressed ()));
+
+  // Connect R,G,B sliders and their functions
+  connect (ui->horizontalSlider_R, SIGNAL (valueChanged (int)), this, SLOT (redSliderValueChanged (int)));
+  connect (ui->horizontalSlider_G, SIGNAL (valueChanged (int)), this, SLOT (greenSliderValueChanged (int)));
+  connect (ui->horizontalSlider_B, SIGNAL (valueChanged (int)), this, SLOT (blueSliderValueChanged (int)));
+  connect (ui->horizontalSlider_R, SIGNAL (sliderReleased ()), this, SLOT (RGBsliderReleased ()));
+  connect (ui->horizontalSlider_G, SIGNAL (sliderReleased ()), this, SLOT (RGBsliderReleased ()));
+  connect (ui->horizontalSlider_B, SIGNAL (sliderReleased ()), this, SLOT (RGBsliderReleased ()));
+
+  // Connect point size slider
+  connect (ui->horizontalSlider_p, SIGNAL (valueChanged (int)), this, SLOT (pSliderValueChanged (int)));
+
+  viewer->addPointCloud (cloud, "cloud");
+  pSliderValueChanged (2);
+  viewer->resetCamera ();
+  ui->qvtkWidget->update ();
+}
+
+void
+PCLViewer::randomButtonPressed ()
+{
+  printf ("Random button was pressed\n");
+  std::vector<int> inliers;
+  pcl::PointCloud<PointT>::Ptr final(new pcl::PointCloud<PointT>);
+  
+  pcl::SampleConsensusModelPlane<PointT>::Ptr
+    model_p(new pcl::SampleConsensusModelPlane<PointT>(cloud));
+  pcl::RandomSampleConsensus<PointT> ransac(model_p);
+  ransac.setDistanceThreshold(.01);
+  ransac.computeModel();
+  ransac.getInliers(inliers);
+
+  // double original_height = 0.0f;
+  // int original_total = cloud->size();
+  // for(size_t i = 0; i < original_total; ++i){
+  //   original_height += cloud->points[i].y;
+  // }
+  // std::cout<<original_height / original_total <<std::endl;
+  
+  pcl::copyPointCloud<PointT>(*cloud, inliers, *final);
+  
+  double height = 0;
+  double x_max = final
+  int totalNum = final->size();  
+  for(size_t i = 0; i < totalNum; ++i){
+    height += final->points[i].y;
+  }
+  std::cout<<height / totalNum <<std::endl;
+
+  viewer->updatePointCloud (final, "cloud");
+  ui->qvtkWidget->update ();
+}
+
+void
+PCLViewer::RGBsliderReleased ()
+{
+  // Set the new color
+  for (size_t i = 0; i < cloud->size (); i++)
+  {
+    cloud->points[i].r = red;
+    cloud->points[i].g = green;
+    cloud->points[i].b = blue;
+  }
+  viewer->updatePointCloud (cloud, "cloud");
+  ui->qvtkWidget->update ();
+}
+
+void
+PCLViewer::pSliderValueChanged (int value)
+{
+  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, value, "cloud");
+  ui->qvtkWidget->update ();
+}
+
+void
+PCLViewer::redSliderValueChanged (int value)
+{
+  red = value;
+  printf ("redSliderValueChanged: [%d|%d|%d]\n", red, green, blue);
+}
+
+void
+PCLViewer::greenSliderValueChanged (int value)
+{
+  green = value;
+  printf ("greenSliderValueChanged: [%d|%d|%d]\n", red, green, blue);
+}
+
+void
+PCLViewer::blueSliderValueChanged (int value)
+{
+  blue = value;
+  printf("blueSliderValueChanged: [%d|%d|%d]\n", red, green, blue);
+}
+
+PCLViewer::~PCLViewer ()
+{
+  delete ui;
+}

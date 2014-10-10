@@ -2,13 +2,14 @@
 #define PCLVIEWER_H
 
 #include <iostream>
-
+#include <vector>
 // Qt
 #include <QMainWindow>
 
 // Point Cloud Library
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
 // Visualization Toolkit (VTK)
